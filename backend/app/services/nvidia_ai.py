@@ -7,7 +7,7 @@ from openai import OpenAI
 from app.models.schemas import PolicyResult, Order
 
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-DEFAULT_MODEL = "meta/llama-3.1-70b-instruct"
+DEFAULT_MODEL = "meta/llama-3.2-11b-vision-instruct"
 
 
 def get_client() -> OpenAI:
