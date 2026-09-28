@@ -1,0 +1,47 @@
+.policy {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  box-shadow: var(--shadow);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.policy h2 {
+  font-family: "Instrument Serif", serif;
+  font-size: 1.85rem;
+  font-weight: 400;
+  margin-bottom: 0.5rem;
+}
+
+.lede {
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+
+.policy section {
+  margin-bottom: 1.25rem;
+}
+
+.policy h3 {
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.policy p,
+.policy li {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.policy ul {
+  padding-left: 1.2rem;
+}
+
+.policy code {
+  background: #f0ebe4;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
