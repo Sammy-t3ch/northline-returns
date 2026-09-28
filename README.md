@@ -2,91 +2,129 @@
 
 Policy-gated customer support refund assistant for **Northline Care**.
 
-- **Backend:** FastAPI · deterministic policy engine · NVIDIA NIM  
-- **Frontend:** React (Vite) on **Cloudflare Pages**  
-- **API host:** **Render** free tier (public HTTPS)  
-- **Data:** Mock CRM with 16 orders  
+| Layer | Stack |
+|-------|--------|
+| Backend | FastAPI · deterministic policy engine · NVIDIA NIM |
+| Frontend | React (Vite) · Support chat · Admin desk · Policy view |
+| Data | Mock CRM with 17 orders + clear refund policy |
+| Run | `docker compose up --build` |
 
-> **Do not use localhost for demos.** Deploy the stack below so reviewers get a public URL.
+**Core design rule:** Policy is applied in code **before** the language model. NVIDIA only writes the customer-facing reply and cannot override a Denied or Escalated decision.
 
 ---
 
-## Public hosting (recommended)
+## Quick start (assessment reviewers)
 
-### 1. Backend on Render (free)
+```bash
+git clone https://github.com/Sammy-t3ch/northline-returns.git
+cd northline-returns
+cp .env.example .env
+# Edit .env and set NVIDIA_API_KEY=nvapi-...
+docker compose up --build
+```
 
-1. Open the one-click blueprint (or connect the repo in the Render dashboard):
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| API docs | http://localhost:8000/docs |
+| Health | http://localhost:8000/api/health |
 
-   **[Deploy to Render](https://render.com/deploy?repo=https://github.com/Sammy-t3ch/northline-returns)**
+Environment variables (see `.env.example`):
 
-2. When prompted, set:
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NVIDIA_API_KEY` | Yes | NVIDIA NIM / OpenAI-compatible key |
+| `NVIDIA_MODEL` | No | Defaults to `meta/llama-3.2-11b-vision-instruct` |
 
-   | Variable | Value |
-   |----------|--------|
-   | `NVIDIA_API_KEY` | Your `nvapi-...` key |
-
-3. After deploy, note the service URL, e.g.  
-   `https://northline-returns-api.onrender.com`
-
-4. Confirm health:  
-   `https://northline-returns-api.onrender.com/api/health`
-
-> Free tier sleeps after ~15 minutes idle. First request may take 30–60s (cold start).
-
-### 2. Frontend on Cloudflare Pages (free)
-
-1. Go to [Cloudflare Pages](https://dash.cloudflare.com/) → **Create** → **Connect to Git** → select `Sammy-t3ch/northline-returns`.
-2. Build settings:
-
-   | Setting | Value |
-   |---------|--------|
-   | Root directory | `frontend` |
-   | Build command | `npm install && npm run build` |
-   | Build output directory | `dist` |
-   | Framework preset | Vite |
-
-3. **Environment variables** (optional):
-
-   | Name | Value |
-   |------|--------|
-   | `RENDER_API_URL` | `https://northline-returns-api.onrender.com` |
-
-   (Pages Function at `functions/api/[[path]].js` proxies `/api/*` to Render.)
-
-4. Deploy. Your public app URL will look like:  
-   `https://northline-care-returns.pages.dev`
-
-### 3. Share with reviewers
-
-| What | URL |
-|------|-----|
-| **Live app** | `https://<your-pages-subdomain>.pages.dev` |
-| **API docs** | `https://northline-returns-api.onrender.com/docs` |
-| **Health** | `https://northline-returns-api.onrender.com/api/health` |
-
-No localhost required.
+Without a valid key the system still runs: the policy engine decides, and a template reply is returned.
 
 ---
 
 ## Architecture
 
 ```
-Browser (Cloudflare Pages)
-   │  /api/*  →  Pages Function proxy
+Browser (React)
+   │
    ▼
-Render (FastAPI)
-   ├─1. Policy engine (deterministic)
-   ├─2. NVIDIA NIM (reply only)
-   └─3. In-memory audit log
+FastAPI
+   ├─1. Load order from mock CRM
+   ├─2. Deterministic policy engine  →  Approved | Denied | Escalated
+   ├─3. NVIDIA NIM (reply generation only)
+   └─4. In-memory audit log (admin desk)
 ```
 
-Policy always runs **before** the model. NVIDIA cannot approve a denied/escalated request.
+### Policy rules (enforced in code)
+
+- **30-day window** — older orders → Denied
+- **Final-sale items** — fully final-sale cart → Denied
+- **>$500 total** → Escalated (human review)
+- **Damage / defect / wrong item** language → Escalated
+- **Not yet delivered** (shipped / processing) → Escalated
+- **Prompt-injection patterns** → Escalated
+- Email / order mismatch or missing order → Denied
+
+### AI role
+
+NVIDIA NIM drafts a short, empathetic customer reply that **must** respect the policy decision. It cannot approve what the engine denied.
 
 ---
 
-## Local development (optional)
+## Demo scenarios
 
-Only for your own machine — **not** for assessment submission links.
+Use the “Try a scenario” chips in the Support tab, or call the API directly.
+
+| Scenario | Email / Order | Expected |
+|----------|---------------|----------|
+| Happy path | maya.chen@northline.test / ORD-1001 | **Approved** |
+| Final sale | priya.sharma@northline.test / ORD-1009 | **Denied** |
+| Too old | liam.brooks@example.com / ORD-1004 | **Denied** |
+| Damage claim | carlos.mendez@example.com / ORD-1008 | **Escalated** |
+| Over $500 | isabella.rossi@northline.test / ORD-1017 | **Escalated** |
+| Still shipping | emma.wilson@northline.test / ORD-1007 | **Escalated** |
+| Injection attempt | maya.chen@northline.test / ORD-1001 | **Escalated** |
+
+Admin desk (Desk tab) shows the live audit log of decisions and reasons.
+
+---
+
+## API
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/refund` | Process refund request `{ email, order_id?, message }` |
+| `GET` | `/api/admin/requests` | Recent decisions + audit notes |
+| `GET` | `/api/orders?email=` | List mock orders (optional filter) |
+| `GET` | `/api/health` | Health check |
+
+Interactive docs: http://localhost:8000/docs
+
+---
+
+## Project structure
+
+```
+northline-returns/
+├── backend/
+│   ├── app/
+│   │   ├── data/           # orders.json + policy.md
+│   │   ├── models/         # Pydantic schemas
+│   │   ├── routers/        # /api/refund, admin, orders
+│   │   └── services/       # policy_engine.py, nvidia_ai.py
+│   ├── tests_policy.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── src/components/     # ChatPanel, AdminDesk, PolicyView
+│   ├── Dockerfile
+│   └── …
+├── docker-compose.yml
+├── .env.example
+└── README.md
+```
+
+---
+
+## Local development (without Docker)
 
 ```bash
 # Backend
@@ -94,34 +132,27 @@ cd backend && pip install -r requirements.txt
 export NVIDIA_API_KEY=nvapi-...
 uvicorn app.main:app --reload --port 8000
 
-# Frontend
+# Frontend (new terminal)
 cd frontend && npm install
 export VITE_API_URL=http://localhost:8000
 npm run dev
 ```
 
-Or: `docker compose up --build` (still local).
+Policy unit tests:
+
+```bash
+cd backend && python tests_policy.py
+```
 
 ---
 
-## Demo scenarios
+## Assumptions & trade-offs
 
-| Scenario | Expected |
-|----------|----------|
-| Happy path (Maya / ORD-1001) | Approved |
-| Final sale (Sofia / ORD-1003) | Denied |
-| Too old (Liam / ORD-1004) | Denied |
-| Damage claim (Carlos / ORD-1008) | Escalated |
-| Injection attempt | Escalated |
-
----
-
-## API
-
-- `POST /api/refund` — `{ email, order_id?, message }`
-- `GET /api/admin/requests`
-- `GET /api/orders?email=`
-- `GET /api/health`
+- Mock CRM is a static JSON file (17 orders). Sufficient for assessment; production would use a real DB.
+- Audit log is in-memory and resets on restart — fine for demos.
+- NVIDIA is used only for reply generation after a hard policy decision (safer than letting the model decide).
+- Prompt-injection detection is pattern-based, not a full security layer.
+- Free-tier public hosting (Render + Cloudflare) is optional; reviewers can run everything with Docker.
 
 ---
 
