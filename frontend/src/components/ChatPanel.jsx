@@ -20,14 +20,19 @@ const DEMO_CUSTOMERS = [
     hint: "Order from March — outside 30-day window",
   },
   {
-    email: "oliver.schmidt@example.com",
-    label: "Oliver Schmidt",
-    hint: "$450 watch — under $500 but still high",
+    email: "isabella.rossi@northline.test",
+    label: "Isabella Rossi",
+    hint: "$2035 bike order — over $500, must escalate",
   },
   {
     email: "carlos.mendez@example.com",
     label: "Carlos Mendez",
     hint: "$390 camping gear — damage claim scenario",
+  },
+  {
+    email: "emma.wilson@northline.test",
+    label: "Emma Wilson",
+    hint: "Still shipping — not yet delivered",
   },
 ];
 
@@ -57,6 +62,19 @@ const SCENARIOS = [
     order_id: "ORD-1008",
     message:
       "The tent arrived damaged — one pole is bent and the fly has a tear. I'd like a refund or replacement.",
+  },
+  {
+    title: "Over $500",
+    email: "isabella.rossi@northline.test",
+    order_id: "ORD-1017",
+    message:
+      "I'd like to return the gravel bike and helmet from ORD-1017. Changed my mind on the color.",
+  },
+  {
+    title: "Still shipping",
+    email: "emma.wilson@northline.test",
+    order_id: "ORD-1007",
+    message: "Please cancel and refund my sweater — I ordered the wrong size.",
   },
   {
     title: "Injection attempt",
