@@ -1,7 +1,7 @@
 """Deterministic refund policy engine. Runs BEFORE any LLM call."""
 
-from datetime import datetime, timedelta
-from typing import Optional, List, Tuple
+from datetime import datetime, timezone
+from typing import Optional, List
 from pathlib import Path
 import json
 import re
@@ -56,8 +56,8 @@ def detect_injection(message: str) -> bool:
 
 def days_since_order(order_date_str: str) -> int:
     try:
-        order_dt = datetime.strptime(order_date_str, "%Y-%m-%d")
-        today = datetime(2026, 9, 28)
+        order_dt = datetime.strptime(order_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        today = datetime.now(timezone.utc)
         return (today - order_dt).days
     except ValueError:
         return 999
@@ -71,6 +71,7 @@ def evaluate_policy(
     reasons: List[str] = []
     flags: dict = {}
 
+    # 1. Prompt-injection / policy-bypass attempt
     if detect_injection(message):
         flags["injection_detected"] = True
         return PolicyResult(
@@ -80,6 +81,7 @@ def evaluate_policy(
             policy_flags=flags,
         )
 
+    # 2. Resolve order
     matched: Optional[Order] = None
     if order_id:
         matched = find_order(order_id, email)
@@ -88,7 +90,9 @@ def evaluate_policy(
             if candidate:
                 return PolicyResult(
                     decision="Denied",
-                    reasons=[f"Order {order_id} does not belong to the email provided."],
+                    reasons=[
+                        f"Order {order_id} does not belong to the email provided."
+                    ],
                     matched_order=None,
                     policy_flags={"email_mismatch": True},
                 )
@@ -118,10 +122,13 @@ def evaluate_policy(
     flags["order_id"] = matched.order_id
     flags["order_total"] = matched.total
 
+    # 3. Age check
     age = days_since_order(matched.order_date)
     flags["days_since_order"] = age
     if age > MAX_AGE_DAYS:
-        reasons.append(f"Order is {age} days old (limit is {MAX_AGE_DAYS} days).")
+        reasons.append(
+            f"Order is {age} days old (limit is {MAX_AGE_DAYS} days)."
+        )
         return PolicyResult(
             decision="Denied",
             reasons=reasons,
@@ -129,6 +136,7 @@ def evaluate_policy(
             policy_flags=flags,
         )
 
+    # 4. Final-sale items
     final_sale_items = [i for i in matched.items if i.final_sale]
     if final_sale_items and len(final_sale_items) == len(matched.items):
         names = ", ".join(i.name for i in final_sale_items)
@@ -147,6 +155,7 @@ def evaluate_policy(
         )
         flags["partial_final_sale"] = True
 
+    # 5. High-value threshold
     if matched.total > HIGH_VALUE_THRESHOLD:
         reasons.append(
             f"Order total ${matched.total:.2f} exceeds ${HIGH_VALUE_THRESHOLD:.0f} "
@@ -159,6 +168,7 @@ def evaluate_policy(
             policy_flags={**flags, "high_value": True},
         )
 
+    # 6. Damage / defect keywords → escalate for evidence review
     damage_keywords = [
         "damaged", "defective", "broken", "wrong item", "incorrect item",
         "not as described", "missing", "arrived broken", "faulty",
@@ -175,6 +185,7 @@ def evaluate_policy(
             policy_flags={**flags, "damage_claim": True},
         )
 
+    # 7. Order not yet delivered
     if matched.status in ("processing", "shipped"):
         reasons.append(
             f"Order status is '{matched.status}' — item may not have been received yet."
@@ -186,6 +197,7 @@ def evaluate_policy(
             policy_flags={**flags, "not_delivered": True},
         )
 
+    # Default path: eligible under deterministic rules
     reasons.append(
         f"Order {matched.order_id} is within the {MAX_AGE_DAYS}-day window, "
         f"not fully final-sale, and under ${HIGH_VALUE_THRESHOLD:.0f}."
