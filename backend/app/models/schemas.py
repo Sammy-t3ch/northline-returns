@@ -1,6 +1,5 @@
-from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, List, Literal
-from datetime import datetime
+from pydantic import BaseModel, Field
+from typing import Optional, List, Literal, Dict, Any
 
 
 class OrderItem(BaseModel):
@@ -23,7 +22,7 @@ class Order(BaseModel):
 
 
 class RefundRequest(BaseModel):
-    email: str = Field(..., description="Email on the order")
+    email: str = Field(..., min_length=3, description="Email on the order")
     order_id: Optional[str] = Field(None, description="Optional order ID")
     message: str = Field(..., min_length=1, description="Customer refund request message")
 
@@ -32,7 +31,7 @@ class PolicyResult(BaseModel):
     decision: Literal["Approved", "Denied", "Escalated"]
     reasons: List[str]
     matched_order: Optional[Order] = None
-    policy_flags: dict = {}
+    policy_flags: Dict[str, Any] = Field(default_factory=dict)
 
 
 class RefundResponse(BaseModel):
@@ -43,16 +42,16 @@ class RefundResponse(BaseModel):
     order_id: Optional[str] = None
     order_total: Optional[float] = None
     timestamp: str
-    audit_notes: List[str] = []
+    audit_notes: List[str] = Field(default_factory=list)
 
 
 class AdminRequestLog(BaseModel):
     request_id: str
     email: str
-    order_id: Optional[str]
+    order_id: Optional[str] = None
     message: str
     decision: str
     reasons: List[str]
     customer_reply: str
     timestamp: str
-    audit_notes: List[str] = []
+    audit_notes: List[str] = Field(default_factory=list)
