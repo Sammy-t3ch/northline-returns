@@ -168,8 +168,8 @@ export default function ChatPanel() {
       <aside className="side-card">
         <h3>Customer</h3>
         <p className="side-lead">
-          Policy is applied in code first. NVIDIA writes the reply and classifies
-          intent — it cannot approve a denied request.
+          Policy is applied in code first. NVIDIA writes the reply — it cannot
+          approve a denied request.
         </p>
         <label className="field">
           <span>Email on the order</span>

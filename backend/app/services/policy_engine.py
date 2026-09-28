@@ -1,6 +1,6 @@
 """Deterministic refund policy engine. Runs BEFORE any LLM call."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from pathlib import Path
 import json
@@ -25,10 +25,21 @@ INJECTION_PATTERNS = [
 ]
 
 
+def _hydrate_order(raw: dict) -> Order:
+    """Resolve relative dates so demo scenarios never expire."""
+    payload = dict(raw)
+    days = payload.pop("days_ago", None)
+    if days is not None:
+        payload["order_date"] = (
+            datetime.now(timezone.utc).date() - timedelta(days=int(days))
+        ).isoformat()
+    return Order(**payload)
+
+
 def load_orders() -> List[Order]:
     with open(ORDERS_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
-    return [Order(**o) for o in data]
+    return [_hydrate_order(o) for o in data]
 
 
 def find_orders_by_email(email: str) -> List[Order]:

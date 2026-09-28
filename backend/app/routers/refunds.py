@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
 from datetime import datetime, timezone
+import os
 import uuid
 
 from app.models.schemas import (
@@ -10,7 +11,7 @@ from app.models.schemas import (
     Order,
 )
 from app.services.policy_engine import evaluate_policy, load_orders, find_orders_by_email
-from app.services.nvidia_ai import generate_customer_reply
+from app.services.nvidia_ai import generate_customer_reply, DEFAULT_MODEL
 
 router = APIRouter(prefix="/api", tags=["refunds"])
 
@@ -71,7 +72,6 @@ async def process_refund(body: RefundRequest):
             audit_notes=audit_notes,
         ),
     )
-    # Keep last 100
     if len(_AUDIT_LOG) > 100:
         _AUDIT_LOG.pop()
 
@@ -94,4 +94,11 @@ async def list_orders(email: str | None = None):
 
 @router.get("/health")
 async def health():
-    return {"status": "ok", "service": "northline-returns"}
+    key = os.getenv("NVIDIA_API_KEY", "")
+    configured = bool(key) and "your-key-here" not in key
+    return {
+        "status": "ok",
+        "service": "northline-returns",
+        "nvidia_configured": configured,
+        "model": os.getenv("NVIDIA_MODEL", DEFAULT_MODEL),
+    }

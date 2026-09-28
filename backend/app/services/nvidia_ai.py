@@ -1,13 +1,18 @@
-"""NVIDIA NIM / OpenAI-compatible client for reply generation & intent assist."""
+"""NVIDIA NIM / OpenAI-compatible client for reply generation only."""
 
+import logging
 import os
-from typing import List, Optional
+
 from openai import OpenAI
 
-from app.models.schemas import PolicyResult, Order
+from app.models.schemas import PolicyResult
 
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+# Llama 3.1/3.3 instruct endpoints were retired 2026-08-26 on NVIDIA NIM.
+# llama-3.2-11b-vision-instruct is a live chat-completions model (vision unused).
 DEFAULT_MODEL = "meta/llama-3.2-11b-vision-instruct"
+
+log = logging.getLogger("northline.nvidia")
 
 
 def get_client() -> OpenAI:
@@ -85,13 +90,14 @@ def generate_customer_reply(
         text = response.choices[0].message.content
         if text:
             return text.strip()
-    except Exception:
-        return _fallback_reply(policy, email)
+    except Exception as exc:
+        log.warning("NVIDIA NIM reply failed (%s); using template", exc)
+        return _fallback_reply(policy)
 
-    return _fallback_reply(policy, email)
+    return _fallback_reply(policy)
 
 
-def _fallback_reply(policy: PolicyResult, email: str) -> str:
+def _fallback_reply(policy: PolicyResult) -> str:
     order_ref = ""
     if policy.matched_order:
         order_ref = f" for order {policy.matched_order.order_id}"

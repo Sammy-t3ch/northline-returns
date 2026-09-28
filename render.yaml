@@ -10,7 +10,7 @@ services:
       - key: NVIDIA_API_KEY
         sync: false
       - key: NVIDIA_MODEL
-        value: meta/llama-3.1-70b-instruct
+        value: meta/llama-3.2-11b-vision-instruct
       - key: PYTHONPATH
         value: .
     healthCheckPath: /api/health

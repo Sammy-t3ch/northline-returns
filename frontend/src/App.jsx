@@ -43,8 +43,8 @@ export default function App() {
       </main>
 
       <footer className="footer">
-        Policy is applied in code first. NVIDIA writes the reply and classifies
-        intent — it cannot approve a denied request.
+        Policy is applied in code first. NVIDIA writes the reply — it cannot
+        approve a denied request.
       </footer>
     </div>
   );
