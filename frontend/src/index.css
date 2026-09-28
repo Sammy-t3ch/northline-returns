@@ -1,0 +1,38 @@
+:root {
+  --bg: #f7f4ef;
+  --surface: #ffffff;
+  --ink: #1a1a1a;
+  --muted: #6b6560;
+  --accent: #2c4a3e;
+  --accent-soft: #e8f0ec;
+  --border: #e5dfd6;
+  --approved: #1b7a4e;
+  --denied: #b33a3a;
+  --escalated: #b57e0a;
+  --shadow: 0 8px 30px rgba(26, 26, 26, 0.06);
+  font-family: "DM Sans", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(165deg, #f7f4ef 0%, #ebe6de 100%);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
