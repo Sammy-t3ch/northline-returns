@@ -212,5 +212,19 @@
     "total": 48.0,
     "status": "delivered",
     "shipping_address": "12 Maple St, Portland, OR"
+  },
+  {
+    "order_id": "ORD-1017",
+    "customer_id": "CUST-016",
+    "email": "isabella.rossi@northline.test",
+    "customer_name": "Isabella Rossi",
+    "order_date": "2026-09-05",
+    "items": [
+      {"sku": "NL-BIKE-CARBON", "name": "Carbon Gravel Bike", "price": 1890.0, "final_sale": false},
+      {"sku": "NL-HELMET-PRO", "name": "Pro Helmet", "price": 145.0, "final_sale": false}
+    ],
+    "total": 2035.0,
+    "status": "delivered",
+    "shipping_address": "Via Montenapoleone 8, Milan"
   }
 ]
