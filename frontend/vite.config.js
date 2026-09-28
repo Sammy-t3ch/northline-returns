@@ -8,7 +8,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: process.env.VITE_API_URL || "http://backend:8000",
+        // Local default: API on same machine. Docker UI uses nginx → backend service.
+        target: process.env.VITE_API_URL || "http://127.0.0.1:8000",
         changeOrigin: true,
       },
     },
