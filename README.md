@@ -1,110 +1,130 @@
 # Northline Care — AI Refund System
 
-Policy-gated customer support refund assistant for the **Northline Care** brand assessment.
+Policy-gated customer support refund assistant for **Northline Care**.
 
-- **Backend:** FastAPI + deterministic policy engine + NVIDIA NIM (Llama 3.1)
-- **Frontend:** React (Vite) — customer chat, support desk, policy view
-- **Data:** Mock CRM with 15+ orders in JSON
-- **Ops:** `docker-compose up` for full stack
+- **Backend:** FastAPI · deterministic policy engine · NVIDIA NIM  
+- **Frontend:** React (Vite) on **Cloudflare Pages**  
+- **API host:** **Render** free tier (public HTTPS)  
+- **Data:** Mock CRM with 16 orders  
 
-## Quick start (Docker)
+> **Do not use localhost for demos.** Deploy the stack below so reviewers get a public URL.
 
-```bash
-cp .env.example .env
-# Put your NVIDIA API key in .env:
-# NVIDIA_API_KEY=nvapi-...
+---
 
-docker compose up --build
-```
+## Public hosting (recommended)
 
-| Service  | URL                    |
-|----------|------------------------|
-| Frontend | http://localhost:3000  |
-| API docs | http://localhost:8000/docs |
-| Health   | http://localhost:8000/api/health |
+### 1. Backend on Render (free)
 
-## Local development (without Docker)
+1. Open the one-click blueprint (or connect the repo in the Render dashboard):
 
-### Backend
+   **[Deploy to Render](https://render.com/deploy?repo=https://github.com/Sammy-t3ch/northline-returns)**
 
-```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-export NVIDIA_API_KEY=nvapi-...
-uvicorn app.main:app --reload --port 8000
-```
+2. When prompted, set:
 
-### Frontend
+   | Variable | Value |
+   |----------|--------|
+   | `NVIDIA_API_KEY` | Your `nvapi-...` key |
 
-```bash
-cd frontend
-npm install
-export VITE_API_URL=http://localhost:8000
-npm run dev
-```
+3. After deploy, note the service URL, e.g.  
+   `https://northline-returns-api.onrender.com`
 
-## Environment variables
+4. Confirm health:  
+   `https://northline-returns-api.onrender.com/api/health`
 
-| Variable         | Required | Description                                      |
-|------------------|----------|--------------------------------------------------|
-| `NVIDIA_API_KEY` | Yes*     | NVIDIA NIM / integrate.api.nvidia.com key        |
-| `NVIDIA_MODEL`   | No       | Default `meta/llama-3.1-70b-instruct`             |
+> Free tier sleeps after ~15 minutes idle. First request may take 30–60s (cold start).
 
-*If the key is missing, the API still works: policy decisions are computed in code and a template reply is returned.
+### 2. Frontend on Cloudflare Pages (free)
+
+1. Go to [Cloudflare Pages](https://dash.cloudflare.com/) → **Create** → **Connect to Git** → select `Sammy-t3ch/northline-returns`.
+2. Build settings:
+
+   | Setting | Value |
+   |---------|--------|
+   | Root directory | `frontend` |
+   | Build command | `npm install && npm run build` |
+   | Build output directory | `dist` |
+   | Framework preset | Vite |
+
+3. **Environment variables** (optional):
+
+   | Name | Value |
+   |------|--------|
+   | `RENDER_API_URL` | `https://northline-returns-api.onrender.com` |
+
+   (Pages Function at `functions/api/[[path]].js` proxies `/api/*` to Render.)
+
+4. Deploy. Your public app URL will look like:  
+   `https://northline-care-returns.pages.dev`
+
+### 3. Share with reviewers
+
+| What | URL |
+|------|-----|
+| **Live app** | `https://<your-pages-subdomain>.pages.dev` |
+| **API docs** | `https://northline-returns-api.onrender.com/docs` |
+| **Health** | `https://northline-returns-api.onrender.com/api/health` |
+
+No localhost required.
+
+---
 
 ## Architecture
 
 ```
-Customer UI ──POST /api/refund──► FastAPI
-                                   │
-                                   ├─1. Policy engine (deterministic)
-                                   │     • age ≤ 30 days
-                                   │     • final-sale check
-                                   │     • $500 high-value → Escalate
-                                   │     • damage keywords → Escalate
-                                   │     • injection patterns → Escalate
-                                   │
-                                   ├─2. NVIDIA NIM (reply only)
-                                   │     • cannot override policy decision
-                                   │
-                                   └─3. In-memory audit log → Desk UI
+Browser (Cloudflare Pages)
+   │  /api/*  →  Pages Function proxy
+   ▼
+Render (FastAPI)
+   ├─1. Policy engine (deterministic)
+   ├─2. NVIDIA NIM (reply only)
+   └─3. In-memory audit log
 ```
 
-### Why policy runs before the LLM
+Policy always runs **before** the model. NVIDIA cannot approve a denied/escalated request.
 
-Hard rules live in Python (`app/services/policy_engine.py`). The model only receives the already-decided outcome and drafts a brand-appropriate message.
+---
 
-### AI integration
+## Local development (optional)
 
-- OpenAI-compatible client pointed at `https://integrate.api.nvidia.com/v1`
-- System prompt forbids changing the decision or revealing internal rules
-- Fallback templates if the NVIDIA call fails
+Only for your own machine — **not** for assessment submission links.
 
-## Demo scenarios (Support tab)
+```bash
+# Backend
+cd backend && pip install -r requirements.txt
+export NVIDIA_API_KEY=nvapi-...
+uvicorn app.main:app --reload --port 8000
 
-| Scenario          | Expected   |
-|-------------------|------------|
-| Happy path        | Approved   |
-| Final sale        | Denied     |
-| Too old           | Denied     |
-| Damage claim      | Escalated  |
-| Injection attempt | Escalated  |
+# Frontend
+cd frontend && npm install
+export VITE_API_URL=http://localhost:8000
+npm run dev
+```
 
-## API surface
+Or: `docker compose up --build` (still local).
 
-- `POST /api/refund` — process a refund request
-- `GET /api/admin/requests` — recent decisions for the Desk
-- `GET /api/orders?email=` — inspect mock CRM
+---
+
+## Demo scenarios
+
+| Scenario | Expected |
+|----------|----------|
+| Happy path (Maya / ORD-1001) | Approved |
+| Final sale (Sofia / ORD-1003) | Denied |
+| Too old (Liam / ORD-1004) | Denied |
+| Damage claim (Carlos / ORD-1008) | Escalated |
+| Injection attempt | Escalated |
+
+---
+
+## API
+
+- `POST /api/refund` — `{ email, order_id?, message }`
+- `GET /api/admin/requests`
+- `GET /api/orders?email=`
 - `GET /api/health`
 
-## Assumptions & trade-offs
+---
 
-- Mock data is static JSON; swap for SQLite/Postgres if needed.
-- Audit log is in-memory (resets on restart) — sufficient for the assessment demo.
-- Demo “today” is fixed at 2026-09-28 so age checks stay reproducible.
-- No auth on the Desk endpoint (assessment scope).
+## Repo
 
-## Brand
-
-**Northline Care** — apparel & outdoor gear. UI uses a calm editorial palette (cream / forest green).
+https://github.com/Sammy-t3ch/northline-returns
