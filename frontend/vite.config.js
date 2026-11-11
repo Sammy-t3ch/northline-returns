@@ -6,6 +6,9 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5173,
+    // Allow any Host header: the dev server is reached through tunnels,
+    // proxied previews and container port-forwards, not just localhost.
+    allowedHosts: true,
     proxy: {
       "/api": {
         // Local default: API on same machine. Docker UI uses nginx → backend service.
@@ -13,5 +16,10 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  preview: {
+    host: "0.0.0.0",
+    port: 4173,
+    allowedHosts: true,
   },
 });

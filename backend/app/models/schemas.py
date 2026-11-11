@@ -22,9 +22,21 @@ class Order(BaseModel):
 
 
 class RefundRequest(BaseModel):
-    email: str = Field(..., min_length=3, description="Email on the order")
-    order_id: Optional[str] = Field(None, description="Optional order ID")
-    message: str = Field(..., min_length=1, description="Customer refund request message")
+    email: str = Field(
+        ...,
+        min_length=3,
+        max_length=254,  # RFC 5321 address limit
+        description="Email on the order",
+    )
+    order_id: Optional[str] = Field(
+        None, max_length=64, description="Optional order ID"
+    )
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=4000,
+        description="Customer refund request message",
+    )
 
 
 class PolicyResult(BaseModel):

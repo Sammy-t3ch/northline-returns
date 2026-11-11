@@ -34,7 +34,10 @@ export default function AdminDesk() {
       <div className="desk-header">
         <div>
           <h2>Support desk</h2>
-          <p>Recent refund decisions and audit notes</p>
+          <p>
+            Recent refund decisions and audit notes
+            {rows.length > 0 ? ` · ${rows.length} logged` : ""}
+          </p>
         </div>
         <button type="button" className="refresh" onClick={load}>
           Refresh
@@ -49,6 +52,7 @@ export default function AdminDesk() {
         </p>
       )}
 
+      {rows.length > 0 && (
       <div className="table-wrap">
         <table>
           <thead>
@@ -91,6 +95,7 @@ export default function AdminDesk() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
