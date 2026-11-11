@@ -232,13 +232,45 @@
   background: var(--accent-soft);
 }
 
+.scenario-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
 .scenario-btn strong {
   font-size: 0.9rem;
 }
 
-.scenario-btn span {
+.scenario-sub {
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+.expected {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.14rem 0.4rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.expected-approved {
+  background: #d8f3e4;
+  color: var(--approved);
+}
+
+.expected-denied {
+  background: #fde8e8;
+  color: var(--denied);
+}
+
+.expected-escalated {
+  background: #fff3d6;
+  color: var(--escalated);
 }
 
 .scenario-btn:disabled {

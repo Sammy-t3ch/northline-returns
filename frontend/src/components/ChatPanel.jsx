@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./ChatPanel.css";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -15,9 +15,14 @@ const DEMO_CUSTOMERS = [
     hint: "Partial final-sale order (tee final, cap eligible)",
   },
   {
+    email: "priya.sharma@northline.test",
+    label: "Priya Sharma",
+    hint: "Entire order is final sale — refund denied",
+  },
+  {
     email: "liam.brooks@example.com",
     label: "Liam Brooks",
-    hint: "Order from March — outside 30-day window",
+    hint: "Order is ~6 months old — outside the 30-day window",
   },
   {
     email: "isabella.rossi@northline.test",
@@ -39,6 +44,7 @@ const DEMO_CUSTOMERS = [
 const SCENARIOS = [
   {
     title: "Happy path",
+    expected: "Approved",
     email: "maya.chen@northline.test",
     order_id: "ORD-1001",
     message:
@@ -46,18 +52,22 @@ const SCENARIOS = [
   },
   {
     title: "Final sale",
+    expected: "Denied",
     email: "priya.sharma@northline.test",
     order_id: "ORD-1009",
     message: "Please refund the linen dress — I changed my mind.",
   },
   {
     title: "Too old",
+    expected: "Denied",
     email: "liam.brooks@example.com",
     order_id: "ORD-1004",
-    message: "The hiking boots from March don't work for me. Can I get a refund?",
+    message:
+      "The hiking boots I ordered a while back aren't right for me. Can I get a refund?",
   },
   {
     title: "Damage claim",
+    expected: "Escalated",
     email: "carlos.mendez@example.com",
     order_id: "ORD-1008",
     message:
@@ -65,6 +75,7 @@ const SCENARIOS = [
   },
   {
     title: "Over $500",
+    expected: "Escalated",
     email: "isabella.rossi@northline.test",
     order_id: "ORD-1017",
     message:
@@ -72,12 +83,14 @@ const SCENARIOS = [
   },
   {
     title: "Still shipping",
+    expected: "Escalated",
     email: "emma.wilson@northline.test",
     order_id: "ORD-1007",
     message: "Please cancel and refund my sweater — I ordered the wrong size.",
   },
   {
     title: "Injection attempt",
+    expected: "Escalated",
     email: "maya.chen@northline.test",
     order_id: "ORD-1001",
     message:
@@ -97,6 +110,14 @@ export default function ChatPanel() {
   ]);
   const [loading, setLoading] = useState(false);
   const [lastDecision, setLastDecision] = useState(null);
+  const transcriptRef = useRef(null);
+
+  // .transcript scrolls internally (max-height in CSS), so new replies land
+  // below the fold unless we follow them down.
+  useEffect(() => {
+    const node = transcriptRef.current;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [messages, loading]);
 
   async function send(override = null) {
     const payload = override || {
@@ -216,7 +237,7 @@ export default function ChatPanel() {
           )}
         </div>
 
-        <div className="transcript">
+        <div className="transcript" ref={transcriptRef}>
           {messages.map((m, i) => (
             <div key={i} className={`bubble ${m.role}`}>
               <p>{m.text}</p>
@@ -262,8 +283,8 @@ export default function ChatPanel() {
       <aside className="side-card scenarios">
         <h3>Try a scenario</h3>
         <p className="side-lead">
-          Each chip runs a real request against the mock CRM. Expected outcomes
-          are listed so you can audit the engine.
+          Each chip runs a real request against the mock CRM. The badge shows
+          the outcome the policy engine must return, so you can audit it.
         </p>
         <div className="scenario-list">
           {SCENARIOS.map((s) => (
@@ -273,9 +294,17 @@ export default function ChatPanel() {
               className="scenario-btn"
               onClick={() => runScenario(s)}
               disabled={loading}
+              title={`${s.email} · ${s.order_id}`}
             >
-              <strong>{s.title}</strong>
-              <span>
+              <span className="scenario-top">
+                <strong>{s.title}</strong>
+                <span
+                  className={`expected expected-${s.expected.toLowerCase()}`}
+                >
+                  {s.expected}
+                </span>
+              </span>
+              <span className="scenario-sub">
                 {s.email.split("@")[0]} · {s.order_id}
               </span>
             </button>

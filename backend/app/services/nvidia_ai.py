@@ -14,11 +14,24 @@ DEFAULT_MODEL = "meta/llama-3.2-11b-vision-instruct"
 
 log = logging.getLogger("northline.nvidia")
 
+# Set after the first request so the "no API key" notice is logged once,
+# instead of once per request for the whole session.
+_warned_no_key = False
+
+
+class NoApiKey(RuntimeError):
+    """Raised when NVIDIA_API_KEY is absent — an expected, documented mode."""
+
+
+def nvidia_configured() -> bool:
+    key = os.getenv("NVIDIA_API_KEY", "")
+    return bool(key) and "your-key-here" not in key
+
 
 def get_client() -> OpenAI:
     api_key = os.getenv("NVIDIA_API_KEY")
-    if not api_key:
-        raise RuntimeError("NVIDIA_API_KEY environment variable is not set")
+    if not nvidia_configured():
+        raise NoApiKey("NVIDIA_API_KEY environment variable is not set")
     return OpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key)
 
 
@@ -73,6 +86,19 @@ def generate_customer_reply(
     email: str,
 ) -> str:
     """Call NVIDIA NIM to draft the customer reply. Falls back to template if API fails."""
+    if not nvidia_configured():
+        # Documented, supported mode — not an error. Log it once, not per request.
+        global _warned_no_key
+        if not _warned_no_key:
+            # warning level so it survives uvicorn's default log routing; the
+            # guard keeps it to one line per process instead of one per request.
+            log.warning(
+                "NVIDIA_API_KEY not set — policy engine still decides; replies are "
+                "templated. Set the key to enable NVIDIA NIM drafting."
+            )
+            _warned_no_key = True
+        return _fallback_reply(policy)
+
     try:
         client = get_client()
         response = client.chat.completions.create(
@@ -90,9 +116,9 @@ def generate_customer_reply(
         text = response.choices[0].message.content
         if text:
             return text.strip()
+        log.warning("NVIDIA NIM returned an empty reply; using template")
     except Exception as exc:
         log.warning("NVIDIA NIM reply failed (%s); using template", exc)
-        return _fallback_reply(policy)
 
     return _fallback_reply(policy)
 

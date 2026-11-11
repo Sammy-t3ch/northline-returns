@@ -67,15 +67,27 @@ flowchart LR
   C -.->|never calls the model first| X[No]
 ```
 
-### Policy rules (enforced in code)
+### Policy rules (enforced in code, in this order)
 
-- **30-day window** — older orders → Denied
-- **Final-sale items** — fully final-sale cart → Denied
-- **>$500 total** → Escalated (human review)
-- **Damage / defect / wrong item** language → Escalated
-- **Not yet delivered** (shipped / processing) → Escalated
-- **Prompt-injection patterns** → Escalated
-- Email / order mismatch or missing order → Denied
+1. **Prompt-injection patterns** → Escalated
+2. **Order resolution** — email / order mismatch or missing order → Denied
+3. **No line items** on the order → Escalated (malformed data)
+4. **Final-sale items** — fully final-sale cart → Denied
+5. **Damage / defect / wrong item** language → Escalated for evidence review
+6. **30-day window** — older orders → Denied
+7. **>$500 total** → Escalated (human review)
+8. **Not confirmed delivered** → Escalated
+9. Otherwise → **Approved**
+
+Two design points worth calling out:
+
+- Damage language is checked **before** the age gate: per the policy, a damaged
+  or incorrect item is reviewed on evidence even outside the 30-day window, so
+  it escalates instead of being auto-denied. Only a fully final-sale cart still
+  denies outright — and the damage claim is still recorded in the audit trail.
+- The delivery gate **fails closed**. Only an explicit `delivered` status can
+  auto-approve; any other or unrecognised value (a typo, a new status) escalates
+  rather than paying out.
 
 Order dates are stored as `days_ago` and resolved at load time so reviewer scenarios stay valid.
 
